@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Tic-Tac-Toe</title>
+		<meta charset="UTF-8">
+		<style>
+			canvas {
+				  position: absolute;
+				  top: 20%;
+				  left: 25%;	  
+			}
+		</style>
+	</head>
+	<body>
+		<canvas id="canvas" width="800" height="600">The browser does not support HTML5 canvas.</canvas>
+		<script type="text/javascript" language="javascript">
+			var canvas = document.getElementById("canvas");
+			var context = canvas.getContext("2d");
+
+			var turn = false; //Nought - true, Cross - false
+			var isOver = false;
+			var isWinned = false;
+			var chesses = {};
+
+			var board = new function() {
+				this.width = 360;
+				this.gridWidth = this.width / 3;
+				this.bgColor = 'black';
+				this.lineColor = 'white';
+				this.render = function (context) {
+					this.clear(context);
+					context.save();
+					context.fillStyle = this.bgColor;
+					context.rect(0, 0, this.width, this.width);
+					context.shadowColor = 'grey';
+					context.shadowBlur = 10;
+					context.shadowOffsetX = 5;
+					context.shadowOffsetY = 5;
+					context.fill();	
+					context.beginPath();
+					for (var i = 0; i <= 3; i++) {
+						context.moveTo(i * this.gridWidth , 0);
+						context.lineTo(i * this.gridWidth , this.width);
+						context.moveTo(0,  i * this.gridWidth);
+						context.lineTo(this.width, i * this.gridWidth);
+					}
+					context.strokeStyle = this.lineColor;
+					context.stroke();
+					context.closePath();
+					context.restore();
+				};
+				this.clear = function(context) {
+					context.clearRect(0, 0, board.width + 30 /*shadow*/, board.width);
+				}
+			}
+
+			var sign = new function () {
+				this.left = board.gridWidth * 3.5;
+				this.top = board.gridWidth;
+				this. render = function (context) {
+					this.clear(context);
+					context.font = '40pt Calibri';
+					context.fillStyle = 'black';
+					context.textBaseline = 'top'
+					context.fillText(this.getResult(), this.left, this.top);
+				};
+				this.clear = function(context) {
+					context.clearRect(this.left, this.top, canvas.width, canvas.height);
+				};
+				this.getResult = function() {
+					if (isWinned) {
+						var winner = turn? 'Nought' : 'Cross';
+						return winner + ' wins';
+					} else if (isOver){
+						return 'Drawn game';
+					} else {
+						return 'Tic-Tac-Toe';
+					}
+				};
+			};
+
+			var hint = new function () {
+				this.left = board.gridWidth * 3.5;
+				this.top = board.gridWidth * 1.7;
+				this.render = function (context){
+					this.clear(context);
+					context.save();
+					context.fillStyle = 'lightgrey';
+					context.font = 'italic 20pt Calibri';
+					context.textBaseline = 'top'
+					context.fillText(this.getHint(), this.left , this.top);	
+					context.restore();	
+				};
+				this.clear = function(context) {
+					context.clearRect(this.left, this.top, canvas.width, canvas.height);
+				};
+				this.getHint = function () {
+					return isOver ?  'Click the board to play again' : ( turn ?  'Turn = Cross' : 'Turn = Nought' );
+				};
+			};
+
+			function Chess(row, col, type) {
+			    this.row = row;
+				this.col = col;
+				this.type = type;
+				this.color = 'white';
+				var top = (row - 1) * board.gridWidth + 10;
+				var left = (col - 1) * board.gridWidth + 10;
+				var diameter = board.gridWidth - 20;
+				var buttom = top + diameter;
+				var right = left + diameter;
+				var centerX =  (left + right) / 2;
+				var centerY = (top + buttom) / 2;
+				var radius = diameter / 2;
+				this.render = function() {
+					context.save();
+					context.lineWidth = 10;
+					context.strokeStyle = this.color;
+					context.lineCap = 'round';
+					context.beginPath();
+					if (this.type) {
+						context.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
+					} else {
+						context.moveTo(left, top);
+						context.lineTo(right, buttom);
+						context.moveTo(right, top);
+						context.lineTo(left, buttom);
+					}
+					context.stroke();	
+					context.closePath();
+					context.restore();
+				};
+			}
+			
+			var listener = function(event) {
+				var cavansX = event.clientX - canvas.offsetLeft;
+				var cavansY = event.clientY - canvas.offsetTop;
+				play(cavansX, cavansY);
+			}
+
+			function init() {
+				isOver = false;
+				turn = false;
+				isWinned = false;
+				chesses =  {};
+				board.clear(context);
+				board.render(context);
+				sign.render(context);
+				hint.render(context);	
+				canvas.removeEventListener('mousedown', listener);
+				canvas.addEventListener('mousedown', listener, false);
+			}
+
+			function play(x, y){
+				if( x < 0 || x >  board.width || y < board.top || y >  board.width) return;
+				var row = Math.floor(y / board.gridWidth) + 1;
+				var col = Math.floor(x / board.gridWidth) + 1;
+				var index = row + '' + col;
+				if (isOver) {
+					init();
+					return;
+				}
+				if (chesses[index]) {
+					return;
+				} else {
+					turn = !turn;
+					hint.render(context);
+					var c = new Chess(row, col, turn);
+					c.render();
+					chesses[index] = c;
+					var win = getWin(row, col);
+					if (win.length >= 3) {
+						for (var i = 0; i < win.length; i++) {
+							chesses[win[i]].color = 'yellow';
+							chesses[win[i]].render();
+						}
+						isWinned = true;
+						isOver = true;
+					} else if (Object.keys(chesses).length == 9){ /* ES5-compatible*/
+						isOver = true;
+					}
+					if (isOver) {
+						sign.render(context);
+						hint.render(context);
+					}
+				}
+			}
+
+			function getWin(row, col) {
+				var key;
+				var winRow = [];
+				var winCol = [];
+				var winDiagonal   = [];
+				var winBackDiagonal   = [];
+				var win = []
+				for (var i = 1; i <= 3; i++) {
+					key = row + '' + i;
+					if (chesses[key] && chesses[key].type == turn){
+						winRow.push(key);
+					} else {
+						break;
+					}
+				}
+				for (var i = 1; i <= 3; i++) {
+					key = i + '' + col;
+					if (chesses[key] && chesses[key].type == turn){
+						winCol.push(key);
+					} else {
+						break;
+					}
+				}
+				if(col == row ) {
+					for (var i = 1; i <= 3; i++) {
+						key = '' + i + i;
+						if (chesses[key] && chesses[key].type == turn){
+							winBackDiagonal.push(key);
+						} else {
+							break;
+						}
+					}
+				}
+				if(col + row == 4) {
+					for (var i = 1; i <= 3; i++) {
+						key = '' + i + (4 - i);
+						if (chesses[key] && chesses[key].type == turn){
+							winDiagonal.push(key);
+						} else {
+							break;
+						}
+					}	
+				}
+				if (winRow.length == 3) win = win.concat(winRow);
+				if (winCol.length == 3) win = win.concat(winCol);
+				if (winDiagonal.length == 3) win = win.concat(winDiagonal);
+				if (winBackDiagonal.length == 3) win = win.concat(winBackDiagonal);
+				//get win unique 
+				for(var i = 0; i < win.length; i++) {
+					for(var j = i + 1; j < win.length; j++) {
+						if(win[i] === win[j])
+							win.splice(j, 1);
+					}
+				}				
+				return win;
+			}
+
+			window.onload = init;
+		</script>
+	</body>
+</html>
